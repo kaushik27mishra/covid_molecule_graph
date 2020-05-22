@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+
+<meta charset="utf-8">
+
+<head>
+    <style>
+        .links line {
+            stroke: #999;
+            stroke-opacity: 0.6;
+        }
+
+        .nodes circle {
+            stroke: #fff;
+            stroke-width: 1.5px;
+        }
+
+        text {
+            font-family: sans-serif;
+            font-size: 10px;
+        }
+    </style>
+    <title>Force Directed Graph for Interactions in 6ACG</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
+
+</head>
+
+<body>
+    <header class="ml-5">
+        <h1 class="mt-2"> Force Directed Graph for Interactions in 6ACG</h1>
+        <a href="http://ballaneypranav.github.io/igib">Home</a>
+    </header>
+    <svg width="1500" height="800"></svg>
+
+</body>
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script>
+
+    var svg = d3.select("svg"),
+        width = +svg.attr("width"),
+        height = +svg.attr("height"),
+        radius = 5;
+
+    var color = d3.scaleOrdinal(d3.schemeCategory10);
+
+    var simulation = d3.forceSimulation()
+        .force("link", d3.forceLink().id(function (d) { return d.id; }))
+        .force("charge", d3.forceManyBody().strength(-500).distanceMax(50))
+        .force("center", d3.forceCenter(width / 2, height / 2));
+
+    d3.json("https://raw.githubusercontent.com/ballaneypranav/igib/master/6acg/interactions.json", function (error, graph) {
+        if (error) throw error;
+
+        var link = svg.append("g")
+            .attr("class", "links")
+            .selectAll("line")
+            .data(graph.links)
+            .enter().append("line")
+            .attr("stroke-width", function (d) { return Math.sqrt(d.value); });
+
+        var node = svg.append("g")
+            .attr("class", "nodes")
+            .selectAll("g")
+            .data(graph.nodes)
+            .enter().append("g")
+
+        var circles = node.append("circle")
+            .attr("r", radius)
+            .attr("fill", function (d) { return color(d.chain); })
+            .call(d3.drag()
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended));
+
+        var lables = node.append("text")
+            .text(function (d) {
+                return d.name;
+            })
+            .attr('x', 6)
+            .attr('y', 3);
+
+        node.append("title")
+            .text(function (d) { return d.id; });
+
+        simulation
+            .nodes(graph.nodes)
+            .on("tick", ticked);
+
+        simulation.force("link")
+            .links(graph.links);
+
+
+
+
+        function ticked() {
+            link
+                .attr("x1", function (d) { return d.source.x; })
+                .attr("y1", function (d) { return d.source.y; })
+                .attr("x2", function (d) { return d.target.x; })
+                .attr("y2", function (d) { return d.target.y; });
+
+            node
+                .attr("transform", function (d) {
+                    x = Math.max(radius, Math.min(width - radius, d.x));
+                    y = Math.max(radius, Math.min(height - radius, d.y));
+                    return "translate(" + x + "," + y + ")";
+                });
+        }
+    });
+
+    function validate(x, a, b) {
+        if (x < a) x = a;
+        if (x > b) x = b;
+        return x;
+    }
+
+    function dragstarted(d) {
+        if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+        simulation.force("center", null)
+        d.fx = validate(d.x, 0, width);
+        d.fy = validate(d.y, 0, height);
+    }
+
+    function dragged(d) {
+        d.fx = d3.event.x;
+        d.fy = d3.event.y;
+    }
+
+    function dragended(d) {
+        if (!d3.event.active) simulation.alphaTarget(0);
+        d.fx = null;
+        d.fy = null;
+    }
+
+</script>
